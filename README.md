@@ -1,4 +1,4 @@
-<h1 align="center">Polymorphiz zk-SNARK</h1>
+<h1 align="center">Polymorphic zk-SNARK</h1>
 
 ## 設定
 
