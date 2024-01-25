@@ -10,8 +10,12 @@
 )]
 
 use ark_bls12_377::{Bls12_377, Fr};
-use ark_ff::Field;
-use ark_groth16::data_structures::{CircuitSpecificSetupPolymorphicSNARK, PolymorphicSNARK};
+use ark_ec::CurveGroup;
+use ark_ff::{Field, UniformRand};
+use ark_groth16::{
+    data_structures::{CircuitSpecificSetupPolymorphicSNARK, PolymorphicSNARK},
+    Proof,
+};
 use ark_r1cs_std::{
     prelude::{AllocVar, AllocationMode, Boolean, EqGadget},
     uint8::UInt8,
@@ -20,7 +24,9 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace,
 use ark_std::rand::{RngCore, SeedableRng};
 use ark_std::test_rng;
 
-use std::borrow::Borrow;
+use ark_std::{ops::Mul, vec::Vec};
+
+use std::{borrow::Borrow, ops::Add};
 
 use cmp::CmpGadget;
 mod cmp;
@@ -162,7 +168,7 @@ impl<const N: usize, F: Field> ConstraintSynthesizer<F> for Puzzle<N> {
     }
 }
 
-fn flatten_input(sudoku: &[[u8; 9]; 9]) -> Vec<Fr>{
+fn flatten_input(sudoku: &[[u8; 9]; 9]) -> Vec<Fr> {
     let mut flat = Vec::new();
     for row in 0..9 {
         for col in 0..9 {
@@ -250,6 +256,85 @@ fn test_sudoku() {
         println!("");
         proofs.push(proof);
     }
+
+    // verify
+    let flat = flatten_input(&sudoku);
+    for (_, proof) in proofs.iter().enumerate() {
+        assert!(Groth16::<Bls12_377>::verify_with_processed_vk(&pvk, &flat, &proof, &rnd).unwrap());
+    }
+    assert!(Groth16::<Bls12_377>::verify_all_proofs(&proofs).unwrap());
+}
+
+#[test]
+fn test_malleability_attack() {
+    // We're going to use the Groth16 proving system.
+    use ark_groth16::Groth16;
+
+    // This may not be cryptographically safe, use
+    // `OsRng` (for example) in production software.
+    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+
+    // setup
+    let (pk, vk) = {
+        let c = Puzzle::<9> {
+            sudoku: None,
+            solution: None,
+        };
+        Groth16::<Bls12_377>::setup(c, &mut rng).unwrap()
+    };
+    let pvk = Groth16::<Bls12_377>::process_vk(&vk).unwrap();
+
+    // rndgen
+    let rnd = Groth16::<Bls12_377>::rndgen(&pk, &mut rng).unwrap();
+
+    let sudoku = [
+        [4, 5, 2, 6, 7, 8, 3, 1, 9],
+        [8, 7, 3, 1, 0, 9, 4, 0, 6],
+        [1, 9, 6, 3, 4, 0, 8, 7, 0],
+        [6, 1, 5, 4, 9, 7, 2, 8, 3],
+        [2, 3, 8, 5, 1, 6, 7, 9, 4],
+        [9, 4, 7, 2, 8, 3, 5, 6, 1],
+        [5, 2, 1, 7, 6, 4, 9, 3, 8],
+        [3, 8, 4, 9, 0, 1, 6, 0, 7],
+        [7, 6, 9, 8, 3, 0, 1, 4, 0],
+    ];
+    let solution = [
+        [4, 5, 2, 6, 7, 8, 3, 1, 9],
+        [8, 7, 3, 1, 2, 9, 4, 5, 6],
+        [1, 9, 6, 3, 4, 5, 8, 7, 2],
+        [6, 1, 5, 4, 9, 7, 2, 8, 3],
+        [2, 3, 8, 5, 1, 6, 7, 9, 4],
+        [9, 4, 7, 2, 8, 3, 5, 6, 1],
+        [5, 2, 1, 7, 6, 4, 9, 3, 8],
+        [3, 8, 4, 9, 5, 1, 6, 2, 7],
+        [7, 6, 9, 8, 3, 2, 1, 4, 5],
+    ];
+
+    // prove
+    let mut proofs = Vec::new();
+    let puzzle = Puzzle::<9> {
+        sudoku: Some(sudoku),
+        solution: Some(solution.clone()),
+    };
+    // create proof1
+    let proof1 = Groth16::<Bls12_377>::prove(&pk, puzzle, &rnd).unwrap();
+    proofs.push(proof1.clone());
+
+    // create proof2 using proof1
+    let r1 = Fr::rand(&mut rng);
+    let r2 = Fr::rand(&mut rng);
+    let a_prime = proof1.a.mul(r1.inverse().unwrap()).into_affine();
+    let b_prime = proof1
+        .b
+        .mul(r1)
+        .add(pk.vk.delta_g2.mul(r1 * r2))
+        .into_affine();
+    let c_prime = proof1.c.add(proof1.a.mul(r2)).into_affine();
+    proofs.push(Proof {
+        a: a_prime,
+        b: b_prime,
+        c: c_prime,
+    });
 
     // verify
     let flat = flatten_input(&sudoku);
