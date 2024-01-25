@@ -25,14 +25,14 @@ impl<E: Pairing, QAP: R1CSToQAP> Groth16<E, QAP> {
         let r = E::ScalarField::rand(rng);
         let s = E::ScalarField::rand(rng);
 
-        let s_delta_g1 = pk.delta_g1.into_group().mul_bigint(&s.into_bigint());
-        let r_delta_g2 = pk.delta_g2.into_group().mul_bigint(&r.into_bigint());
+        let r_s_delta_g1 = pk.delta_g1 * (r * s);
+        let r_sub_s_alpha_g1 = pk.vk.alpha_g1 * (r - s);
 
         Ok(Randomizer {
             r,
             s,
-            p: s_delta_g1.into_affine(),
-            q: r_delta_g2.into_affine(),
+            p: r_s_delta_g1.into_affine(),
+            q: r_sub_s_alpha_g1.into_affine(),
         })
     }
 
@@ -108,6 +108,8 @@ impl<E: Pairing, QAP: R1CSToQAP> Groth16<E, QAP> {
 
         let l_aux_acc = E::G1::msm_bigint(&pk.l_query, &aux_assignment);
 
+        let r_sub_s_alpha_g1 = pk.vk.alpha_g1 * (r - s);
+
         end_timer!(c_acc_time);
 
         let input_assignment = input_assignment
@@ -152,6 +154,7 @@ impl<E: Pairing, QAP: R1CSToQAP> Groth16<E, QAP> {
         let c_time = start_timer!(|| "Finish C");
         let mut g_c = s_g_a;
         g_c += &r_g1_b;
+        g_c += &r_sub_s_alpha_g1;
         g_c += &l_aux_acc;
         g_c += &h_acc;
         end_timer!(c_time);

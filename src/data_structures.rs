@@ -13,8 +13,8 @@ pub struct Randomizer<E: Pairing> {
     pub s: E::ScalarField,
     /// The `P` element in `G1`
     pub p: E::G1Affine,
-    /// The `Q` element in `G2`
-    pub q: E::G2Affine,
+    /// The `Q` element in `G1`
+    pub q: E::G1Affine,
 }
 
 impl<E: Pairing> Default for Randomizer<E> {
@@ -23,7 +23,7 @@ impl<E: Pairing> Default for Randomizer<E> {
             r: E::ScalarField::default(),
             s: E::ScalarField::default(),
             p: E::G1Affine::default(),
-            q: E::G2Affine::default(),
+            q: E::G1Affine::default(),
         }
     }
 }

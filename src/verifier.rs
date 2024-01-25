@@ -52,12 +52,14 @@ impl<E: Pairing, QAP: R1CSToQAP> Groth16<E, QAP> {
             [
                 <E::G1Affine as Into<E::G1Prepared>>::into(proof.a),
                 rnd.p.into(),
+                rnd.q.into(),
                 prepared_inputs.into_affine().into(),
                 proof.c.into(),
             ],
             [
                 proof.b.into(),
-                rnd.q.into(),
+                pvk.vk.delta_g2.into(),
+                pvk.vk.delta_g2.into(),
                 pvk.gamma_g2_neg_pc.clone(),
                 pvk.delta_g2_neg_pc.clone(),
             ],
