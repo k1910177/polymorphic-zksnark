@@ -264,6 +264,83 @@ fn test_sudoku() {
 }
 
 #[test]
+fn test_sudoku_same_solution() {
+    // We're going to use the Groth16 proving system.
+    use ark_groth16::Groth16;
+
+    // This may not be cryptographically safe, use
+    // `OsRng` (for example) in production software.
+    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+
+    // setup
+    let (pk, vk) = {
+        let c = Puzzle::<9> {
+            sudoku: None,
+            solution: None,
+        };
+        Groth16::<Bls12_377>::setup(c, &mut rng).unwrap()
+    };
+    let pvk = Groth16::<Bls12_377>::process_vk(&vk).unwrap();
+
+    // rndgen
+    let rnd = Groth16::<Bls12_377>::rndgen(&pk, &mut rng).unwrap();
+
+    let sudoku = [
+        [4, 5, 2, 6, 7, 8, 3, 1, 9],
+        [8, 7, 3, 1, 0, 9, 4, 0, 6],
+        [1, 9, 6, 3, 4, 0, 8, 7, 0],
+        [6, 1, 5, 4, 9, 7, 2, 8, 3],
+        [2, 3, 8, 5, 1, 6, 7, 9, 4],
+        [9, 4, 7, 2, 8, 3, 5, 6, 1],
+        [5, 2, 1, 7, 6, 4, 9, 3, 8],
+        [3, 8, 4, 9, 0, 1, 6, 0, 7],
+        [7, 6, 9, 8, 3, 0, 1, 4, 0],
+    ];
+    let solutions = [
+        [
+            [4, 5, 2, 6, 7, 8, 3, 1, 9],
+            [8, 7, 3, 1, 5, 9, 4, 2, 6],
+            [1, 9, 6, 3, 4, 2, 8, 7, 5],
+            [6, 1, 5, 4, 9, 7, 2, 8, 3],
+            [2, 3, 8, 5, 1, 6, 7, 9, 4],
+            [9, 4, 7, 2, 8, 3, 5, 6, 1],
+            [5, 2, 1, 7, 6, 4, 9, 3, 8],
+            [3, 8, 4, 9, 2, 1, 6, 5, 7],
+            [7, 6, 9, 8, 3, 5, 1, 4, 2],
+        ],
+        [   // same solution as above
+            [4, 5, 2, 6, 7, 8, 3, 1, 9],
+            [8, 7, 3, 1, 5, 9, 4, 2, 6],
+            [1, 9, 6, 3, 4, 2, 8, 7, 5],
+            [6, 1, 5, 4, 9, 7, 2, 8, 3],
+            [2, 3, 8, 5, 1, 6, 7, 9, 4],
+            [9, 4, 7, 2, 8, 3, 5, 6, 1],
+            [5, 2, 1, 7, 6, 4, 9, 3, 8],
+            [3, 8, 4, 9, 2, 1, 6, 5, 7],
+            [7, 6, 9, 8, 3, 5, 1, 4, 2],
+        ],
+    ];
+
+    // prove
+    let mut proofs = Vec::new();
+    for (_, solution) in solutions.iter().enumerate() {
+        let puzzle = Puzzle::<9> {
+            sudoku: Some(sudoku),
+            solution: Some(solution.clone()),
+        };
+        let proof = Groth16::<Bls12_377>::prove(&pk, puzzle, &rnd).unwrap();
+        proofs.push(proof);
+    }
+
+    // verify
+    let flat = flatten_input(&sudoku);
+    for (_, proof) in proofs.iter().enumerate() {
+        assert!(Groth16::<Bls12_377>::verify_with_processed_vk(&pvk, &flat, &proof, &rnd).unwrap());
+    }
+    assert!(Groth16::<Bls12_377>::compare_all_proofs(&proofs).unwrap());
+}
+
+#[test]
 fn test_malleability_attack() {
     // We're going to use the Groth16 proving system.
     use ark_groth16::Groth16;
