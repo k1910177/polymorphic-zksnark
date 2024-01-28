@@ -252,8 +252,6 @@ fn test_sudoku() {
             solution: Some(solution.clone()),
         };
         let proof = Groth16::<Bls12_377>::prove(&pk, puzzle, &rnd).unwrap();
-        println!("{:?}", proof);
-        println!("");
         proofs.push(proof);
     }
 
@@ -262,7 +260,7 @@ fn test_sudoku() {
     for (_, proof) in proofs.iter().enumerate() {
         assert!(Groth16::<Bls12_377>::verify_with_processed_vk(&pvk, &flat, &proof, &rnd).unwrap());
     }
-    assert!(Groth16::<Bls12_377>::verify_all_proofs(&proofs).unwrap());
+    assert!(Groth16::<Bls12_377>::compare_all_proofs(&proofs).unwrap());
 }
 
 #[test]
@@ -323,23 +321,21 @@ fn test_malleability_attack() {
     // create proof2 using proof1
     let r1 = Fr::rand(&mut rng);
     let r2 = Fr::rand(&mut rng);
-    let a_prime = proof1.a.mul(r1.inverse().unwrap()).into_affine();
-    let b_prime = proof1
-        .b
-        .mul(r1)
-        .add(pk.vk.delta_g2.mul(r1 * r2))
-        .into_affine();
-    let c_prime = proof1.c.add(proof1.a.mul(r2)).into_affine();
-    proofs.push(Proof {
-        a: a_prime,
-        b: b_prime,
-        c: c_prime,
-    });
+    let proof2 = Proof::<Bls12_377> {
+        a: proof1.a.mul(r1.inverse().unwrap()).into_affine(),
+        b: proof1
+            .b
+            .mul(r1)
+            .add(pk.vk.delta_g2.mul(r1 * r2))
+            .into_affine(),
+        c: proof1.c.add(proof1.a.mul(r2)).into_affine(),
+    };
+    proofs.push(proof2);
 
     // verify
     let flat = flatten_input(&sudoku);
     for (_, proof) in proofs.iter().enumerate() {
         assert!(Groth16::<Bls12_377>::verify_with_processed_vk(&pvk, &flat, &proof, &rnd).unwrap());
     }
-    assert!(Groth16::<Bls12_377>::verify_all_proofs(&proofs).unwrap());
+    assert!(Groth16::<Bls12_377>::compare_all_proofs(&proofs).unwrap());
 }

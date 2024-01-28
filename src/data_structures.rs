@@ -202,7 +202,7 @@ pub trait PolymorphicSNARK<F: PrimeField> {
     ) -> Result<bool, Self::Error>;
 
     /// Checks that all `proofs` are all distinct 
-    fn verify_all_proofs(
+    fn compare_all_proofs(
         proofs: &Vec<Self::Proof>
     ) -> Result<bool, Self::Error>;
 }

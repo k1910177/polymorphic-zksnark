@@ -154,6 +154,7 @@ impl<E: Pairing, QAP: R1CSToQAP> Groth16<E, QAP> {
         let c_time = start_timer!(|| "Finish C");
         let mut g_c = s_g_a;
         g_c += &r_g1_b;
+        // g_c -= &r_s_delta_g1;
         g_c += &r_sub_s_alpha_g1;
         g_c += &l_aux_acc;
         g_c += &h_acc;
