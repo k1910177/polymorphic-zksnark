@@ -15,10 +15,6 @@
 #[macro_use]
 extern crate ark_std;
 
-#[cfg(feature = "r1cs")]
-#[macro_use]
-extern crate derivative;
-
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.
 pub mod r1cs_to_qap;
 
@@ -33,10 +29,6 @@ pub mod prover;
 
 /// Verify proofs for the Groth16 zkSNARK construction.
 pub mod verifier;
-
-/// Constraints for the Groth16 verifier.
-#[cfg(feature = "r1cs")]
-pub mod constraints;
 
 pub use self::data_structures::*;
 pub use self::{generator::*, prover::*, verifier::*};
