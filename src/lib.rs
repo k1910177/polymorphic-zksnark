@@ -38,9 +38,6 @@ pub mod verifier;
 #[cfg(feature = "r1cs")]
 pub mod constraints;
 
-#[cfg(test)]
-mod test;
-
 pub use self::data_structures::*;
 pub use self::{generator::*, prover::*, verifier::*};
 
@@ -104,7 +101,7 @@ impl<E: Pairing, QAP: R1CSToQAP> PolymorphicSNARK<E::ScalarField> for Groth16<E,
         Ok(Self::verify_proof(&circuit_pvk, proof, rnd, &x)?)
     }
 
-    fn verify_all_proofs(proofs: &Vec<Self::Proof>) -> Result<bool, Self::Error> {
+    fn compare_all_proofs(proofs: &Vec<Self::Proof>) -> Result<bool, Self::Error> {
         Ok(Self::compare_proofs(proofs)?)
     }
 }
